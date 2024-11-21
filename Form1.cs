@@ -27,12 +27,26 @@ namespace Andmebaas_TARpv23
         FileInfo openfile;
         string extension;
         byte[] imageData;
+        DataTable laotable;
         public Form1()
         {
             InitializeComponent();
             NaitaAndmed();
+            NaitaLaod();
         }
-
+        private void NaitaLaod()
+        {
+            conn.Open();
+            cmd=new SqlCommand("SELECT Id, LaoNimetus FROM Ladu",conn);
+            adapter = new SqlDataAdapter(cmd);
+            laotable=new DataTable();
+            adapter.Fill(laotable);
+            foreach (DataRow item in laotable.Rows)
+            {
+                Ladu_cb.Items.Add(item["LaoNimetus"]);
+            }
+            conn.Close();
+        }
         public void NaitaAndmed()
         {
             conn.Open();
@@ -51,7 +65,14 @@ namespace Andmebaas_TARpv23
                 try
                 {
                     conn.Open();
-                    cmd = new SqlCommand("INSERT INTO Toode(Nimetus,Kogus,Hind,Pilt,FusPilt) VALUES (@toode,@kogus,@hind,@pilt,@fpilt)", conn);
+
+                    cmd=new SqlCommand("SELECT Id FROM Ladu WHERE LaoNimetus=@ladu",conn);
+                    cmd.Parameters.AddWithValue("@ladu", Ladu_cb.Text);
+                    cmd.ExecuteNonQuery();
+
+                    ID =Convert.ToInt32(cmd.ExecuteScalar());
+
+                    cmd = new SqlCommand("INSERT INTO Toode(Nimetus,Kogus,Hind,Pilt,FusPilt,LaoID) VALUES (@toode,@kogus,@hind,@pilt,@fpilt,@ladu)", conn);
                     cmd.Parameters.AddWithValue("@toode", Nimetus_txt.Text);
                     cmd.Parameters.AddWithValue("@kogus", Kogus_txt.Text);
                     cmd.Parameters.AddWithValue("@hind", Hind_txt.Text);
@@ -59,6 +80,8 @@ namespace Andmebaas_TARpv23
 
                     imageData = File.ReadAllBytes(open.FileName);
                     cmd.Parameters.AddWithValue("@fpilt",imageData);
+                    cmd.Parameters.AddWithValue("@ladu", ID);
+
                     cmd.ExecuteNonQuery();
 
                     conn.Close();
@@ -117,6 +140,7 @@ namespace Andmebaas_TARpv23
                     cmd.Parameters.AddWithValue("@kogus", Kogus_txt.Text);
                     cmd.Parameters.AddWithValue("@hind", Hind_txt.Text);
                     cmd.Parameters.AddWithValue("@pilt", Nimetus_txt.Text+extension);
+                    //cmd.Parameters.AddWithValue("@pilt", Nimetus_txt.Text + extension);
                     cmd.ExecuteNonQuery();
                     conn.Close();
                     NaitaAndmed();
@@ -198,7 +222,6 @@ namespace Andmebaas_TARpv23
                     string file = dataGridView1.SelectedRows[0].Cells["Pilt"].Value.ToString();//Nimetus_txt.Text+extension;                   
                     Eemaldamine();
                     NaitaAndmed();
-                    System.Threading.Thread.Sleep(500);
                     Kustuta_fail(file);
                 }
             }
@@ -211,14 +234,11 @@ namespace Andmebaas_TARpv23
         {
             try
             {
-                
                 string filePath = Path.Combine(Path.GetFullPath(@"..\..\Pildid"), file);
-                MessageBox.Show($"Püüan kustutada faili: {filePath}");
-                Failivabastus(pictureBox1);
                 if (File.Exists(filePath))
                 {
                         File.Delete(filePath);
-                        MessageBox.Show("Fail on kustutatud");
+                        MessageBox.Show($"Fail {filePath} on kustutatud");
                 }
                 else
                 {
@@ -240,7 +260,6 @@ namespace Andmebaas_TARpv23
                     using (MemoryStream ms = new MemoryStream(imageData))
                     {
                         Image image = Image.FromStream(ms);
-
                         Loopilt(image, e.RowIndex);
                     }
                 }
